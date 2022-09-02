@@ -1,4 +1,3 @@
-from curses import meta
 import glob
 import json
 import os
@@ -7,31 +6,28 @@ import pandas as pd
 
 ##################################################
 # 현 상황   : suite에서 폴더 자체로 올린 데이터 검수하는 용도
-# TODO     : meta 폴더에 json파일만 있는 경우
-# 하드코딩   : meta_path 에 ISON
+# TODO     : 프로젝트 정보 받는 부분 추가
 ##################################################
 
-# def get_meta_file_list_info(meta_path):
-
-# meta path안의 모든 json 파일 가져오기
-def get_all_metaFiles(meta_path):
-    meta_file_list=[]
+def get_metaFolder_files(meta_path):
+    files=[]
     for f in os.listdir(meta_path):
-        filepath = meta_path + f
-        meta_file_list += [meta_path+f+'/'+i for i in os.listdir(filepath)]       # meta폴더 내의 폴더명 + 파일명
-    return meta_file_list
+        file_path = os.path.join(meta_path, f)
+        # get all files from folders
+        if os.path.isdir(file_path):
+            for ff in os.listdir(file_path):
+                files.append(os.path.join(os.path.join(meta_path, f), ff))
+        else:
+            files.append(file_path)
+    return files
 
-
-def get_xlsx(file_path, project_name='ISON'):
-    source_path = file_path+'/'
-    meta_path = source_path+'/meta/'+project_name+'/'
+def read_json(files, source_path):
     df = pd.DataFrame(columns=['data_key', 'tags', 'work_assignee'])
 
-    meta_file_list = get_all_metaFiles(meta_path)
-
-    # meta 폴더에서 json 정보 가져오기
-    for i, mf in enumerate(meta_file_list):
+    for i, mf in enumerate(files):
         df.loc[i] = ''
+
+        # get json info from meta folder
         with open(mf) as json_meta_data:
             json_meta_data = json.load(json_meta_data)
         
@@ -39,29 +35,40 @@ def get_xlsx(file_path, project_name='ISON'):
         df.loc[i]['tags']       = json_meta_data['tags'][0]['name']
         df.loc[i]['work_assignee'] = json_meta_data['work_assignee']
 
-        # label 폴더에서 json 정보 가져오기
-        label_path = source_path + json_meta_data['label_path'][0]
+        # get json info from label folder
+        # label_path = source_path + json_meta_data['label_path'][0]
+        label_path = os.path.join(source_path, json_meta_data['label_path'][0])
         with open(label_path) as json_label_data:
             json_label_data = json.load(json_label_data)
 
-        # object 개수대로 pandas의 열 수 늘려주기
-        object_num = len(json_label_data['objects'])
-        for num in range(object_num):
-            index_num = num+1
-            # index_num    = json_label_data['objects'][num]['annotation']['meta']['index_num']
-            class_name = json_label_data['objects'][num]['class_name']
-            properties = json_label_data['objects'][num]['properties']
-            properties = '' if not properties else properties[0]['option_name']
+        # if label exists on data
+        if 'objects' in json_label_data:
+            object_num = len(json_label_data['objects'])
+            for num in range(object_num):
+                index_num = num+1
+                class_name = json_label_data['objects'][num]['class_name']
+                properties = json_label_data['objects'][num]['properties']
+                properties = '' if not properties else properties[0]['option_name']
 
-            # dataframe에 해당 컬럼이없으면 추가해주기
-            if 'class'+str(index_num) not in df.columns:
-                df['class'+str(index_num)] = ''
-                df['property'+str(index_num)] = ''
-                print(f'{index_num}번 클래스 추가')
-            
-            df.loc[i]['class'+str(index_num)] = class_name
-            df.loc[i]['property'+str(index_num)] = properties
+                # object 개수대로 class와 property 수 늘려주기 
+                if 'class'+str(index_num) not in df.columns:
+                    df['class'+str(index_num)] = ''
+                    df['property'+str(index_num)] = ''
+                    print(f'{index_num}번 클래스 추가')
+                
+                df.loc[i]['class'+str(index_num)] = class_name
+                df.loc[i]['property'+str(index_num)] = properties
     
-    df.to_excel(source_path+project_name+'.xlsx')
+    return df
 
-    return True
+def make_xlsx(file_path, project_name='ISON'):
+    
+    meta_path = os.path.join(os.path.join(file_path, 'meta'), project_name)
+
+    files = get_metaFolder_files(meta_path)
+
+    df = read_json(files, file_path)
+    df.to_excel(os.path.join(file_path, project_name+'.xlsx'))
+
+    result_path = os.path.join(file_path, project_name+'.xlsx')
+    return True, result_path
