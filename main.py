@@ -7,7 +7,7 @@ def get_filepath():
     # lbl.config(text = c"Successfully file made in path.")
     # btnRead['state'] = tk.DISABLED
     ##################################################
-    file_path = '/home/hwi/suite_2_excel/ISON 2022-08-31 14_05_51_FOR_CODE'
+#     file_path = '/home/hwi/suite_2_excel/ISON 2022-08-31 14_05_51_FOR_CODE'
     ##################################################
     result, path = make_xlsx(file_path)
     if result:
