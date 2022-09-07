@@ -42,51 +42,6 @@ def get_files_endswith(path='', endswith=''):
                 result_files += [os.path.join(root, file)]
     return result_files
 
-def read_json(files, source_path):
-    try:
-        df = pd.DataFrame(columns=['data_key', 'tags', 'work_assignee'])
-
-        for i, mf in enumerate(files):
-
-            df.loc[i] = ''
-
-            # get json info from meta folder
-            with open(mf, encoding='UTF8') as json_meta_data:
-                json_meta_data = json.load(json_meta_data)
-
-            df.loc[i]['data_key']   = json_meta_data['data_key']
-            df.loc[i]['tags']       = json_meta_data['tags'][0]['name']
-            df.loc[i]['work_assignee'] = json_meta_data['work_assignee']
-
-            # get json info from label folder
-            # label_path = source_path + json_meta_data['label_path'][0]
-            label_path = os.path.join(source_path, json_meta_data['label_path'][0])
-            with open(label_path) as json_label_data:
-                json_label_data = json.load(json_label_data)
-
-            # if label exists on data
-            if 'objects' in json_label_data:
-                object_num = len(json_label_data['objects'])
-                for num in range(object_num):
-                    index_num = num+1
-                    class_name = json_label_data['objects'][num]['class_name']
-                    properties = json_label_data['objects'][num]['properties']
-                    properties = '' if not properties else properties[0]['option_name']
-
-                    # object 개수대로 class와 property 수 늘려주기
-                    if 'class'+str(index_num) not in df.columns:
-                        df['class'+str(index_num)] = ''
-                        df['property'+str(index_num)] = ''
-                        print(f'{index_num}번 클래스 추가')
-
-                    df.loc[i]['class'+str(index_num)] = class_name
-                    df.loc[i]['property'+str(index_num)] = properties
-
-        return df
-    except Exception as e:
-        logger.error(mf+'파일에서 문제 발생했음!!')
-        logger.error(str(e), exc_info=True)
-
 def get_json_contents(file_path):
     try:
         # get json files in meta folder
@@ -98,7 +53,7 @@ def get_json_contents(file_path):
         df = pd.DataFrame(columns=['data_key', 'tags', 'work_assignee'])
 
         for i, mf in enumerate(meta_files):
-            logger.debug('reading.... meta\n'+ mf)
+            logger.info('reading.... '+ mf)
             df.loc[i] = ''
 
             # get json info from meta folder
@@ -108,18 +63,15 @@ def get_json_contents(file_path):
             df.loc[i]['data_key'] = json_meta_data['data_key']
             df.loc[i]['tags'] = '' if not json_meta_data['tags'] else json_meta_data['tags'][0]['name']
             df.loc[i]['work_assignee'] = json_meta_data['work_assignee']
-            logger.debug('got meta info')
 
             # get json info from label folder
             # json_meta_data['label_path'][0] = label/name.json
             label_file = os.path.join(file_path, json_meta_data['label_path'][0])
             with open(label_file, encoding='UTF8') as json_label_data:
                 json_label_data = json.load(json_label_data)
-                logger.debug('reading.... label\n' + label_file)
 
             # if label exists on data
             if 'objects' in json_label_data:
-                logger.debug('Exist objects')
                 object_num = len(json_label_data['objects'])
                 for num in range(object_num):
                     index_num = num + 1
@@ -141,9 +93,9 @@ def get_json_contents(file_path):
 
                     df.loc[i]['class' + str(index_num)] = class_name
                     df.loc[i]['property' + str(index_num)] = properties
-
         return df
     except Exception as e:
+        logger.error(mf+'파일에서 문제 발생했음!!')
         logger.error(str(e), exc_info=True)
 
 def make_xlsx(file_path):
